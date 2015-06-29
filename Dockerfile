@@ -6,8 +6,8 @@ WORKDIR /home/drone-simulator
 
 # Install packages
 ADD package.json /home/drone-simulator/package.json
-RUN npm install -g nodemon
-RUN npm install
+RUN npm install -g nodemon && \
+    npm install
 
 # Make everything available for start
 ADD . /home/drone-simulator

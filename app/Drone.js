@@ -73,11 +73,11 @@ Drone.prototype = {
     
     return loculator.getNext()
     .tap(function () {
-      if (_this.status === constants.COMMAND.STOP) {
-        return Promise.reject(constants.COMMAND.STOP);
+      if (_this.status === constants.COMMANDS.STOP) {
+        return Promise.reject(constants.COMMANDS.STOP);
       }
     })
-    .spread(function (newLocation) {
+    .then(function (newLocation) {
 
       _this.location = newLocation;
       _this.status = constants.STATUS.MOVING;
@@ -92,12 +92,12 @@ Drone.prototype = {
     })
     .then(function () {
       // repeat
-      _this.move();
+      return _this.move();
     })
     .catch(function (err) {
-      if (err === constants.COMMAND.STOP) {
-        this.status = constants.STATUS.STOPPED;
-        return this.updateAnsible();
+      if (err === constants.COMMANDS.STOP) {
+        _this.status = constants.STATUS.STOPPED;
+        _this.updateAnsible();
       } else {
         throw new Error(err);
       }
@@ -105,16 +105,19 @@ Drone.prototype = {
   },
 
   stop: function () {
-    this.status = constants.COMMAND.STOP;
+    this.status = constants.COMMANDS.STOP;
   },
 
   updateAnsible: function () {
-    return Ansible.update(this.id, {
+    Ansible.update({
+      id: this.id,
       location: this.location,
       lastWaypoint: this.lastWaypoint,
       nextWaypoint: this.nextWaypoint,
       status: this.status
     });
+
+    return Promise.resolve();
   },
 
   /**
@@ -123,17 +126,13 @@ Drone.prototype = {
    * @return {Promise}
    */
   register: function () {
-    var _this = this;
 
     if (!this.registered) {
-      return Ansible.register(this)
-      .then(function () {
-        Ansible.monitor(_this.onNewCommand.bind(_this));
-        return _this;
-      });
-    } else {
-      return Promise.resolve(this);
+      Ansible.register(this);
+      Ansible.monitor(this.onNewCommand.bind(this));
     }
+    
+    return Promise.resolve(this);
   },
 
   onNewCommand: function (command) {
